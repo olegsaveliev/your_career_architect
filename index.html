@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ink & Code | IT Career Architect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@300;400;600&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              serif: ['Cormorant Garamond', 'serif'],
+              hand: ['Patrick Hand', 'cursive'],
+            },
+            colors: {
+              ink: '#1a1a1a',
+              paper: '#f9f9f7',
+              sketch: '#4a4a4a',
+              pencil: '#707070'
+            },
+            boxShadow: {
+              'sketch': '3px 3px 0px 0px #1a1a1a',
+              'sketch-hover': '5px 5px 0px 0px #1a1a1a',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #f9f9f7;
+        color: #1a1a1a;
+        /* Dot grid background for drafting table vibe */
+        background-image: radial-gradient(#d1d1d1 1.5px, transparent 1.5px);
+        background-size: 24px 24px;
+      }
+      
+      /* Custom scrollbar to look like a pencil lead */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.05);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #4a4a4a;
+        border: 2px solid #f9f9f7;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #1a1a1a;
+      }
+
+      /* Animation for drawing effect */
+      @keyframes drawLine {
+        from { width: 0; }
+        to { width: 100%; }
+      }
+      .animate-draw {
+        animation: drawLine 1s ease-out forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "recharts": "https://esm.sh/recharts@^3.5.1",
+    "react/": "https://esm.sh/react@^19.2.1/",
+    "react": "https://esm.sh/react@^19.2.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.1/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
