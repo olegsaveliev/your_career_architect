@@ -12,240 +12,121 @@ export const JobsBoard: React.FC<JobsBoardProps> = ({ onApply }) => {
   const [error, setError] = useState('');
   const [debugLog, setDebugLog] = useState<string[]>([]);
 
-  // Helper to handle mixed JSON/SSE responses from MCP
-  const parseResponse = async (response: Response, context: string) => {
-      const text = await response.text();
-      
-      // 1. Try standard JSON
-      try {
-          return JSON.parse(text);
-      } catch (e) {
-          // 2. Try SSE (Server-Sent Events) extraction
-          // The server sends "data: {...json...}"
-          const lines = text.split('\n');
-          for (const line of lines) {
-              const trimmed = line.trim();
-              if (trimmed.startsWith('data:')) {
-                  try {
-                      const jsonStr = trimmed.substring(5).trim();
-                      const payload = JSON.parse(jsonStr);
-                      // Check for JSON-RPC properties
-                      if (payload.result || payload.error || payload.id) {
-                          return payload;
-                      }
-                  } catch (inner) {
-                      // Continue searching other lines
-                  }
-              }
-          }
-          
-          console.error(`[${context}] Parse Error. Raw text:`, text);
-          throw new Error(`Received invalid response format. Raw: ${text.substring(0, 50)}...`);
-      }
-  };
-
   const fetchJobs = async () => {
     setLoading(true);
     setError('');
     setDebugLog([]);
+    setJobs([]);
+
+    // Direct DOU URL as requested
+    const targetUrl = "https://jobs.dou.ua/vacancies/?category=Project%20Manager&exp=5plus";
     
-    // N8N MCP Configuration
-    const mcpUrl = "https://osavelyev.app.n8n.cloud/mcp-server/http";
-    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMzFmMThhYS1mM2U2LTQ0MzYtYjAxYi1kYTZkMzNkM2I3ZWIiLCJpc3MiOiJuOG4iLCJhdWQiOiJtY3Atc2VydmVyLWFwaSIsImp0aSI6IjA3NGM0ZWM3LTIzMmQtNGQ4ZC04ZTQxLTc5OGY5ODJhYTBhYiIsImlhdCI6MTc2NTQ1NjUyOH0.M_Hb9uedFBvDnv8C3wm3I2PiBnPPXml18Wp96Uc7N-U";
-    
-    // Use CORS Proxy to bypass browser restrictions
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(mcpUrl)}`;
+    // Switch to AllOrigins proxy to avoid 403 Forbidden from direct CORS proxies
+    // AllOrigins wraps content in JSON which often bypasses basic WAF blocks
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
     try {
-        setDebugLog(prev => [...prev, "Connecting to MCP Server..."]);
+        setDebugLog(prev => [...prev, `Target: ${targetUrl}`]);
+        setDebugLog(prev => [...prev, "Fetching via AllOrigins proxy..."]);
+
+        const response = await fetch(proxyUrl);
         
-        // STEP 1: List available tools
-        // The server requires accepting event-stream even for list
-        const listResponse = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json, text/event-stream', 
-                'Cache-Control': 'no-cache'
-            },
-            body: JSON.stringify({
-                jsonrpc: "2.0",
-                method: "tools/list",
-                id: 1
-            })
-        });
-
-        if (!listResponse.ok) {
-            const errText = await listResponse.text().catch(() => '');
-            throw new Error(`MCP Connection Failed (${listResponse.status}): ${errText}`);
+        if (!response.ok) {
+            throw new Error(`Proxy HTTP Error: ${response.status}`);
         }
 
-        const listData = await parseResponse(listResponse, "List Tools");
+        const data = await response.json();
+
+        // Check the status code reported by AllOrigins for the target site
+        if (data.status?.http_code && data.status.http_code >= 400) {
+             throw new Error(`Target site returned ${data.status.http_code} Forbidden/Error`);
+        }
+
+        const htmlText = data.contents;
         
-        if (listData.error) {
-            throw new Error(`MCP Error: ${listData.error.message}`);
+        if (!htmlText) {
+             throw new Error("Received empty content from proxy.");
         }
 
-        const tools = listData.result?.tools || [];
-        if (tools.length === 0) {
-            throw new Error("Connected to server, but no tools/workflows were found.");
-        }
+        setDebugLog(prev => [...prev, `Received ${htmlText.length} bytes. Parsing DOM...`]);
 
-        // Find the specific tool for DOU scraping
-        const targetToolName = "This workflow scraps DOU page for Project management jobs in Ukraine";
-        let targetTool = tools.find((t: any) => t.name === targetToolName);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
         
-        if (!targetTool) {
-            setDebugLog(prev => [...prev, `Specific tool not found, looking for partial match...`]);
-            targetTool = tools.find((t: any) => t.name.includes("DOU") || t.name.includes("scraps"));
-        }
+        // DOU Structure: list of li.l-vacancy
+        const vacancyItems = doc.querySelectorAll('.l-vacancy');
         
-        // Fallback to first tool if still not found
-        if (!targetTool) {
-             setDebugLog(prev => [...prev, `No matching tool found, defaulting to first available tool.`]);
-             targetTool = tools[0];
-        }
-
-        setDebugLog(prev => [...prev, `Found Tool: "${targetTool.name}"`]);
-        setDebugLog(prev => [...prev, "Triggering Workflow..."]);
-
-        // STEP 2: Call the tool
-        // N8N often streams the execution result, so we accept text/event-stream
-        const callResponse = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json, text/event-stream',
-                'Cache-Control': 'no-cache'
-            },
-            body: JSON.stringify({
-                jsonrpc: "2.0",
-                method: "tools/call",
-                id: 2,
-                params: {
-                    name: targetTool.name,
-                    arguments: {}
-                }
-            })
-        });
-
-        if (!callResponse.ok) {
-             const errText = await callResponse.text().catch(() => '');
-             throw new Error(`Tool Execution Failed (${callResponse.status}): ${errText}`);
-        }
-
-        const callData = await parseResponse(callResponse, "Call Tool");
-        
-        if (callData.error) {
-             throw new Error(`Tool Error: ${callData.error.message}`);
-        }
-
-        // STEP 3: Parse the content
-        const contentItems = callData.result?.content || [];
-        // Concatenate all text content pieces
-        const rawText = contentItems.map((c: any) => c.text).join('');
-        
-        setDebugLog(prev => [...prev, "Parsing results..."]);
-
-        let data;
-        try {
-            data = JSON.parse(rawText);
-        } catch {
-             setDebugLog(prev => [...prev, "Complex response format, attempting cleanup..."]);
-             // Sometimes the tool returns text surrounding the JSON
-             try {
-                 const match = rawText.match(/\[.*\]/s);
-                 if (match) {
-                     data = JSON.parse(match[0]);
-                 } else {
-                     throw new Error("Could not find JSON array in response");
-                 }
-             } catch (e) {
-                 console.error("Parse error", e);
-                 // As a last resort, assume the whole text isn't JSON and we got nothing
-                 data = []; 
+        if (vacancyItems.length === 0) {
+             // Fallback check: sometimes structure is different or blocked
+             if (htmlText.includes("reCAPTCHA") || htmlText.includes("security check")) {
+                 throw new Error("Access blocked by DOU security (CAPTCHA/WAF).");
              }
+             setDebugLog(prev => [...prev, "No vacancy elements found. HTML structure might have changed."]);
         }
 
-        // Normalize the data structure (it might be wrapped in { result: ... } or { data: ... })
-        let items: any[] = [];
-        
-        if (Array.isArray(data)) {
-            items = data;
-        } else if (data && typeof data === 'object') {
-             if (Array.isArray(data.data)) items = data.data;
-             else if (Array.isArray(data.items)) items = data.items;
-             else if (Array.isArray(data.result)) items = data.result;
-             else if (Array.isArray(data.jobs)) items = data.jobs;
-             else if (data.title || data.company) items = [data]; // Single item
-        }
+        const parsedJobs: Job[] = [];
 
-        if (items.length === 0) {
-             setDebugLog(prev => [...prev, "Workflow executed but returned 0 items."]);
-             console.log("Debug Raw Data:", data);
-        }
+        vacancyItems.forEach((el, index) => {
+             // Title & Link
+             const titleLink = el.querySelector('.title .vt') as HTMLAnchorElement;
+             if (!titleLink) return;
 
-        // Map to internal Job type
-        const parsedJobs: Job[] = items.map((item: any, index: number) => {
-            // Field mapping based on likely scraper output
-            const titleRaw = item.title || item.position || item.name || 'Untitled Role';
-            const link = item.link || item.url || item.href || '';
-            const rawDesc = item.description || item.summary || item.details || item.snippet || 'No description provided.';
-            
-            let title = titleRaw;
-            let company = item.company || 'Unknown Company';
+             const title = titleLink.textContent?.trim() || 'Untitled Role';
+             let link = titleLink.getAttribute('href') || '';
+             if (link && !link.startsWith('http')) {
+                 link = `https://jobs.dou.ua${link}`;
+             }
 
-            // Heuristic: If company isn't separate, it might be "Role at Company"
-            if (company === 'Unknown Company') {
-                const parts = titleRaw.split(/ at | @ | in /i);
-                if (parts.length > 1) {
-                    title = parts[0].trim();
-                    company = parts[parts.length - 1].trim();
-                }
-            }
+             // Company
+             const companyEl = el.querySelector('.company');
+             // Company often has text like " — CompanyName" inside specific structure, but textContent usually works
+             // Sometimes company name is in an anchor tag inside .company
+             let company = companyEl?.textContent?.trim() || 'Unknown Company';
+             // Clean up "—" prefix if present (DOU often formats it "Job Title — Company") in some views, or just inside the div
+             company = company.replace(/^—\s*/, '');
 
-            // Simple HTML strip for description
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = rawDesc;
-            const plainDesc = tempDiv.textContent || '';
-            const shortDesc = plainDesc.length > 150 ? plainDesc.substring(0, 150) + '...' : plainDesc;
+             // Description
+             const descEl = el.querySelector('.sh-info');
+             const description = descEl?.textContent?.trim() || '';
 
-            // Determine type (Remote/Office)
-            let type = item.type || 'Office';
-            const lowerContent = (title + plainDesc + (item.location || '')).toLowerCase();
-            
-            if (lowerContent.includes('remote') || lowerContent.includes('віддалено')) type = 'Remote';
-            else if (lowerContent.includes('hybrid')) type = 'Hybrid';
-            
-            // Normalize Location
-            let location = item.location || 'Ukraine';
-            if (lowerContent.includes('kyiv')) location = 'Kyiv';
-            else if (lowerContent.includes('lviv')) location = 'Lviv';
+             // Location
+             const citiesEl = el.querySelector('.cities');
+             const location = citiesEl?.textContent?.trim() || 'Ukraine';
 
-            return {
-                id: link || `job-${index}-${Date.now()}`,
-                title,
-                company,
-                location,
-                salary: item.salary || 'Open',
-                type,
-                tags: Array.isArray(item.tags) ? item.tags : [],
-                description: shortDesc,
-                link,
-                pubDate: new Date()
-            };
+             // Salary
+             const salaryEl = el.querySelector('.salary');
+             const salary = salaryEl?.textContent?.trim() || 'Open';
+
+             // Determine type
+             let type = 'Office';
+             const lowerLoc = location.toLowerCase();
+             const lowerDesc = description.toLowerCase();
+             if (lowerLoc.includes('remote') || lowerLoc.includes('віддалено') || lowerDesc.includes('remote')) {
+                 type = 'Remote';
+             } else if (lowerLoc.includes('hybrid') || lowerDesc.includes('hybrid')) {
+                 type = 'Hybrid';
+             }
+
+             parsedJobs.push({
+                 id: link || `job-${index}`,
+                 title,
+                 company,
+                 location,
+                 salary,
+                 type,
+                 description,
+                 tags: [], // Hard to extract cleanly from list view
+                 link,
+                 pubDate: new Date() // No easy way to parse relative dates like "2 hours ago" without library
+             });
         });
 
-        // Filter out empty/invalid entries
-        const validJobs = parsedJobs.filter(j => j.title !== 'Untitled Role' || j.link);
+        setDebugLog(prev => [...prev, `Parsed ${parsedJobs.length} jobs.`]);
 
-        if (validJobs.length > 0) {
-            setJobs(validJobs);
-            setDebugLog(prev => [...prev, `Success! Loaded ${validJobs.length} jobs.`]);
+        if (parsedJobs.length > 0) {
+            setJobs(parsedJobs);
         } else {
-            setDebugLog(prev => [...prev, "No valid job entries found in parsed data."]);
+            setError("No jobs found. The scraper might need updating or the category is empty.");
         }
 
     } catch (err: any) {
@@ -360,7 +241,7 @@ export const JobsBoard: React.FC<JobsBoardProps> = ({ onApply }) => {
                   <div className="font-hand text-ink flex-1 overflow-hidden mt-2">
                     <div className="flex justify-between items-start mb-2 opacity-60 border-b border-black/5 pb-1">
                         <span className="text-sm font-bold uppercase tracking-wider">{job.type}</span>
-                        <span className="text-sm">{job.pubDate?.toLocaleDateString()}</span>
+                        <span className="text-sm">{job.salary !== 'Open' ? job.salary : ''}</span>
                     </div>
                     
                     <h3 className="text-2xl font-bold leading-none mb-1 line-clamp-2 mt-2">
@@ -394,7 +275,7 @@ export const JobsBoard: React.FC<JobsBoardProps> = ({ onApply }) => {
                     <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                  </div>
                  <h3 className="font-hand text-3xl text-gray-400 mb-2">Ready to scrape.</h3>
-                 <p className="font-sans text-gray-400">Hit "Scrape DOU Jobs" to trigger N8N Workflow.</p>
+                 <p className="font-sans text-gray-400">Hit "Scrape DOU Jobs" to load from DOU.ua</p>
              </div>
           )}
       </div>
