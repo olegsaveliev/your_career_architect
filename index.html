@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ink & Code | IT Career Architect</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Keep window.ethereum configurable so browser extensions that inject it
+      // don't crash when they attempt to redefine the property.
+      if (!Object.getOwnPropertyDescriptor(window, 'ethereum')) {
+        Object.defineProperty(window, 'ethereum', {
+          value: undefined,
+          writable: true,
+          configurable: true,
+        });
+      }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@300;400;600&family=Patrick+Hand&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
