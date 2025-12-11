@@ -225,7 +225,10 @@ export const JobsBoard: React.FC<JobsBoardProps> = ({ onApply }) => {
       {/* Header Section */}
       <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b-2 border-ink pb-6">
         <div>
-          <h2 className="font-serif text-5xl text-ink mb-2 italic">Ukraine PM <br/><span className="font-hand not-italic text-4xl text-gray-600">Sticky Board</span></h2>
+          <h2 className="text-5xl mb-2">
+            <span className="font-serif italic text-ink">Ukraine</span>{' '}
+            <span className="font-hand font-bold text-purple-900">PM Board</span>
+          </h2>
           <p className="text-sm font-hand text-pencil mt-2">DOU Scraper • Project Management</p>
         </div>
         

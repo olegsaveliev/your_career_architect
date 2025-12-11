@@ -24,7 +24,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
     <div className="p-8 max-w-6xl mx-auto animate-fade-in pb-20">
       <div className="mb-12 border-b-2 border-ink pb-6 flex items-end justify-between">
         <div>
-           <h2 className="font-serif text-6xl text-ink mb-1">My <span className="italic text-gray-600">Stats</span></h2>
+           <h2 className="text-6xl mb-1">
+             <span className="font-serif italic text-ink">My</span>{' '}
+             <span className="font-hand font-bold text-purple-900">Stats</span>
+           </h2>
            <p className="text-pencil font-hand text-xl ml-2">Progress tracking</p>
         </div>
         <div className="hidden md:block">
