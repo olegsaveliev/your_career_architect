@@ -29,6 +29,12 @@ export interface ResumeSection {
   id: string;
   title: string;
   content: string;
+  startDate?: string;
+  endDate?: string;
+  location?: string;
+  company?: string;
+  description?: string;
+  bulletPoints?: string[];
 }
 
 export interface ResumeData {
@@ -38,4 +44,8 @@ export interface ResumeData {
   skills: string;
   experience: ResumeSection[];
   profilePicture?: string;
+  phone?: string;
+  email?: string;
+  linkedin?: string;
+  location?: string;
 }

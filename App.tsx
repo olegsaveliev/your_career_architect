@@ -26,13 +26,45 @@ function App() {
 
   // Resume State
   const [resumeData, setResumeData] = useState<ResumeData>({
-    fullName: 'Alexander Kovalenko',
-    title: 'Senior Frontend Engineer',
-    summary: 'Dedicated and efficient full stack developer with 6+ years experience in application layers, presentation layers, and databases. Certified Scrum Master.',
-    skills: 'React, TypeScript, Node.js, Tailwind CSS, PostgreSQL, AWS, Docker',
+    fullName: 'Oleg Saveliev',
+    title: 'Program and Portfolio Manager',
+    summary: 'Results-driven leader with extensive experience in business strategy, development approaches, and value-driven program execution.',
+    skills: 'Program Management, Strategic Planning, Team Leadership, Process Optimization',
+    phone: '+380506415777',
+    email: 'osavelyev@gmail.com',
+    linkedin: 'https://www.linkedin.com/in/oleg-savelyev/',
+    location: 'Kiev',
     experience: [
-      { id: '1', title: 'Senior Developer at TechSoft UA', content: 'Led a team of 5 developers. Improved load times by 40%.' },
-      { id: '2', title: 'Frontend Dev at StartUp Inc', content: 'Built the MVP from scratch using React Native.' }
+      { 
+        id: '1', 
+        title: 'Delivery Lead', 
+        company: 'SQUAD',
+        location: 'Kyiv, Ukraine',
+        startDate: '03/2022',
+        endDate: 'Present',
+        description: 'Program Manager leading high-impact initiatives within Amazon\'s Ring division.',
+        content: 'Program Portfolio & Technical Program Management (TPM) Leadership',
+        bulletPoints: [
+          'Program Portfolio & Technical Program Management (TPM) Leadership',
+          'Strategic Forecasting aligned with company objectives',
+          'Process Optimization & PMO Improvements for operational efficiency'
+        ]
+      },
+      { 
+        id: '2', 
+        title: 'Technical Program Manager', 
+        company: 'Ring Ukraine',
+        location: 'Kyiv, Ukraine',
+        startDate: '07/2019',
+        endDate: '03/2022',
+        description: 'Experienced Program Manager leading high-impact initiatives within Amazon\'s Ring division.',
+        content: 'Managed complex, high-visibility projects',
+        bulletPoints: [
+          'Managed complex, high-visibility projects with competing priorities.',
+          'Developed and executed detailed project plans, securing resources, driving schedules, and facilitating cross-team collaboration.',
+          'Led stakeholder communication, ensuring transparency on project goals, timelines, and deliverables.'
+        ]
+      }
     ]
   });
 
