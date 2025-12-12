@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ResumeData } from '../types';
-import { generateCoverLetter, improveResumeSummary } from '../services/geminiService';
 
 interface ResumeBuilderProps {
   resumeData: ResumeData;
@@ -8,39 +7,16 @@ interface ResumeBuilderProps {
 }
 
 export const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ resumeData, setResumeData }) => {
-  const [activePanel, setActivePanel] = useState<'edit' | 'preview' | 'ai'>('edit');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [jobDescInput, setJobDescInput] = useState('');
-  const [aiOutput, setAiOutput] = useState('');
-  const [aiMode, setAiMode] = useState<'cover_letter' | 'summary'>('cover_letter');
+  const [activePanel, setActivePanel] = useState<'edit' | 'preview'>('edit');
 
   const handleChange = (field: keyof ResumeData, value: string) => {
     setResumeData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAIRequest = async () => {
-    if (!jobDescInput && aiMode === 'cover_letter') return;
-    
-    setIsGenerating(true);
-    let result = '';
-    
-    if (aiMode === 'cover_letter') {
-      result = await generateCoverLetter(resumeData, jobDescInput);
-    } else {
-      result = await improveResumeSummary(resumeData.summary, jobDescInput || "Senior Software Engineer");
-      if (result) {
-        handleChange('summary', result);
-      }
-    }
-    
-    setAiOutput(result);
-    setIsGenerating(false);
-  };
-
   return (
     <div className="h-full flex flex-col md:flex-row overflow-hidden bg-paper/50 backdrop-blur-sm">
       {/* Editor Panel - "The Sketchbook" */}
-      <div className={`w-full md:w-1/2 p-8 overflow-y-auto border-r-2 border-dashed border-gray-300 transition-all duration-500 ${activePanel === 'ai' ? 'md:w-1/3' : ''}`}>
+      <div className="w-full md:w-1/2 p-8 overflow-y-auto border-r-2 border-dashed border-gray-300 transition-all duration-500">
         <div className="flex items-center justify-between mb-8">
           <h2 className="font-hand text-3xl font-bold text-ink flex items-center gap-2">
             <span className="text-2xl">✏️</span> Draft Details
@@ -57,12 +33,6 @@ export const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ resumeData, setRes
               className={`px-4 py-1 text-sm font-hand font-bold border-2 transition-all ${activePanel === 'preview' ? 'bg-ink text-white border-ink shadow-sketch' : 'border-gray-300 text-gray-500 hover:border-ink'}`}
             >
               View
-            </button>
-            <button 
-              onClick={() => setActivePanel('ai')}
-              className={`px-4 py-1 text-sm font-hand font-bold border-2 transition-all flex items-center gap-1 ${activePanel === 'ai' ? 'bg-purple-900 text-white border-purple-900 shadow-sketch' : 'text-purple-900 border-purple-200 hover:border-purple-900'}`}
-            >
-               <span>✨ AI</span>
             </button>
           </div>
         </div>
@@ -143,67 +113,13 @@ export const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ resumeData, setRes
         </div>
       </div>
 
-      {/* Preview / AI Panel - "The Final Print" */}
-      <div className={`w-full md:w-1/2 bg-white relative transition-all duration-500 flex flex-col ${activePanel === 'ai' ? 'md:w-2/3' : ''} shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.1)]`}>
+      {/* Preview Panel - "The Final Print" */}
+      <div className="w-full md:w-1/2 bg-white relative transition-all duration-500 flex flex-col shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.1)]">
         
         {/* Paper texture overlay */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]"></div>
 
-        {activePanel === 'ai' ? (
-          <div className="flex-1 flex flex-col h-full p-8 relative z-10 animate-fade-in bg-purple-50/30">
-             <div className="mb-6 border-b-2 border-purple-100 pb-4">
-                <h3 className="font-serif text-3xl italic text-purple-900 mb-1 flex items-center gap-2">
-                  Gemini 3 Pro
-                </h3>
-                <p className="font-hand text-gray-500">Your AI Career Architect</p>
-             </div>
-
-             <div className="flex gap-4 mb-6">
-                <button 
-                  onClick={() => setAiMode('cover_letter')}
-                  className={`flex-1 py-3 text-lg font-hand font-bold border-2 transition-all ${aiMode === 'cover_letter' ? 'border-purple-900 bg-white text-purple-900 shadow-sketch' : 'border-transparent bg-white/50 text-gray-400 hover:border-purple-200'}`}
-                >
-                  Cover Letter
-                </button>
-                <button 
-                  onClick={() => setAiMode('summary')}
-                  className={`flex-1 py-3 text-lg font-hand font-bold border-2 transition-all ${aiMode === 'summary' ? 'border-purple-900 bg-white text-purple-900 shadow-sketch' : 'border-transparent bg-white/50 text-gray-400 hover:border-purple-200'}`}
-                >
-                  Refine Summary
-                </button>
-             </div>
-
-             <div className="mb-6">
-               <textarea 
-                  className="w-full p-4 bg-white border-2 border-purple-100 focus:border-purple-900 outline-none transition-colors h-32 resize-none text-base font-hand shadow-sm rounded-sm"
-                  placeholder={aiMode === 'cover_letter' ? "Paste job description..." : "Target Job Title..."}
-                  value={jobDescInput}
-                  onChange={(e) => setJobDescInput(e.target.value)}
-               />
-             </div>
-
-             <button
-                onClick={handleAIRequest}
-                disabled={isGenerating}
-                className="w-full py-4 bg-purple-900 text-white font-hand text-xl font-bold hover:bg-purple-800 disabled:opacity-50 transition-all shadow-sketch active:shadow-none active:translate-x-[3px] active:translate-y-[3px] mb-8 border-2 border-purple-900"
-             >
-               {isGenerating ? 'Sketching Ideas...' : 'Generate with Gemini'}
-             </button>
-
-             <div className="flex-1 bg-white border-2 border-gray-200 p-8 overflow-y-auto relative shadow-inner">
-                {aiOutput ? (
-                  <div className="prose prose-sm max-w-none text-ink font-serif whitespace-pre-wrap leading-7 text-lg">
-                    {aiOutput}
-                  </div>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-300 text-center">
-                    <svg className="w-16 h-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    <p className="font-hand text-xl">Waiting for inspiration...</p>
-                  </div>
-                )}
-             </div>
-          </div>
-        ) : (
+        {activePanel === 'preview' && (
           <div className="p-16 h-full overflow-y-auto relative z-10 bg-white" id="resume-preview">
             {/* Minimalist Architect Style Resume */}
             <div className="border-b-2 border-black pb-8 mb-12 flex justify-between items-end">
@@ -254,6 +170,16 @@ export const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ resumeData, setRes
                   </div>
                </div>
             </div>
+          </div>
+        )}
+
+        {activePanel === 'edit' && (
+          <div className="h-full flex flex-col items-center justify-center text-gray-300 text-center p-16">
+            <svg className="w-24 h-24 mb-6 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            <p className="font-hand text-2xl mb-2">Edit your resume on the left</p>
+            <p className="font-sans text-sm text-gray-400">Click "View" to see the preview</p>
           </div>
         )}
       </div>

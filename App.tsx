@@ -2,17 +2,20 @@ import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { ResumeBuilder } from './components/ResumeBuilder';
+import { CoverLetter } from './components/CoverLetter';
 import { JobsBoard } from './components/JobsBoard';
+import { SavedJobs } from './components/SavedJobs';
 import { PictureEditor } from './components/PictureEditor';
-import { Login } from './components/Login';
+// import { Login } from './components/Login'; // Commented out for future use
 import { AppStatus, ApplicationStats, Job, ResumeData } from './types';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
-  const handleRoleUpdate = (role: string) => {
-    setUser(prev => (prev ? { ...prev, role } : prev));
-  };
+  // Login functionality commented out for future use
+  // const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
+  // const handleRoleUpdate = (role: string) => {
+  //   setUser(prev => (prev ? { ...prev, role } : prev));
+  // };
   
   // Stats State
   const [stats, setStats] = useState<ApplicationStats[]>([
@@ -65,19 +68,24 @@ function App() {
   };
 
   const renderContent = () => {
-    if (!user) {
-      return <Login onLogin={setUser} />;
-    }
+    // Login check commented out for future use
+    // if (!user) {
+    //   return <Login onLogin={setUser} />;
+    // }
 
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard stats={stats} />;
       case 'resume':
         return <ResumeBuilder resumeData={resumeData} setResumeData={setResumeData} />;
+      case 'cover-letter':
+        return <CoverLetter resumeData={resumeData} />;
       case 'picture-edit':
         return <PictureEditor onAddToResume={handleAddToResume} />;
       case 'jobs':
         return <JobsBoard onApply={handleApply} />;
+      case 'saved-jobs':
+        return <SavedJobs />;
       default:
         return <Dashboard stats={stats} />;
     }
@@ -88,9 +96,9 @@ function App() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        userName={user?.name || 'Guest'}
-        userRole={user?.role || 'Role not set'}
-        onRoleUpdate={handleRoleUpdate}
+        userName={'Guest'} // Default value - login commented out for future use
+        userRole={'Role not set'} // Default value - login commented out for future use
+        onRoleUpdate={() => {}} // Placeholder - login commented out for future use
       />
       <main className="flex-1 h-screen overflow-y-auto relative">
         {renderContent()}
